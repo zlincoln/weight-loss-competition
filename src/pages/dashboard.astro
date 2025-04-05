@@ -1,0 +1,124 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getCurrentUser } from '../lib/cloudflareAccess';
+import { getAllCompetitions, getCompetitionParticipants, getCompetitionRankings } from '../lib/db';
+import CompetitionDashboard from '../components/CompetitionDashboard';
+
+// Get current user
+const user = await getCurrentUser(Astro.request);
+if (!user) {
+  return Astro.redirect('/.cloudflare/access/login');
+}
+
+// Get all competitions from the database
+const { results: allCompetitions } = await getAllCompetitions(Astro.locals.runtime.env.DB);
+
+// Filter competitions where the user is a participant
+const userCompetitions = [];
+for (const competition of allCompetitions) {
+  const participants = await getCompetitionParticipants(Astro.locals.runtime.env.DB, competition.id);
+  const isParticipant = participants.some(p => p.user_id === user.id);
+  
+  if (isParticipant) {
+    // Get rankings for this competition
+    const rankings = await getCompetitionRankings(Astro.locals.runtime.env.DB, competition.id);
+    
+    // Find user's rank
+    const userRank = rankings.findIndex(r => r.user_id === user.id) + 1;
+    const userStats = rankings.find(r => r.user_id === user.id);
+    
+    userCompetitions.push({
+      ...competition,
+      rank: userRank,
+      weightLost: userStats ? userStats.weight_lost : 0,
+      percentageLost: userStats ? userStats.percentage_lost : 0,
+      totalParticipants: participants.length,
+      isActive: new Date(competition.end_date) >= new Date()
+    });
+  }
+}
+
+// Sort competitions: active first, then by end date (most recent first)
+userCompetitions.sort((a, b) => {
+  if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+  return new Date(b.end_date) - new Date(a.end_date);
+});
+---
+
+<Layout title="Dashboard">
+  <section class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Welcome, {user.name}!</h1>
+    <p class="text-gray-600">
+      Track your weight loss journey and see your progress in active competitions.
+    </p>
+  </section>
+
+  {userCompetitions.length === 0 ? (
+    <div class="bg-white p-8 rounded-lg shadow-md text-center">
+      <h2 class="text-2xl font-semibold text-gray-700 mb-4">No Competitions Yet</h2>
+      <p class="text-gray-600 mb-6">
+        You are not currently participating in any weight loss competitions.
+      </p>
+      <a 
+        href="/competition" 
+        class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+      >
+        Browse Competitions
+      </a>
+    </div>
+  ) : (
+    <div class="grid md:grid-cols-2 gap-6">
+      {userCompetitions.map((competition) => (
+        <div class={`bg-white rounded-lg shadow-md overflow-hidden border-l-4 ${competition.isActive ? 'border-emerald-500' : 'border-gray-400'}`}>
+          <div class="px-6 py-4">
+            <div class="flex justify-between items-start">
+              <div>
+                <h2 class="text-xl font-semibold text-gray-800 mb-1">
+                  {competition.name}
+                </h2>
+                <p class="text-sm text-gray-500 mb-3">
+                  {new Date(competition.start_date).toLocaleDateString()} - {new Date(competition.end_date).toLocaleDateString()}
+                </p>
+              </div>
+              <span class={`px-3 py-1 rounded-full text-sm font-medium ${competition.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>
+                {competition.isActive ? 'Active' : 'Completed'}
+              </span>
+            </div>
+            
+            <div class="mt-4 grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p class="text-sm text-gray-500">Your Rank</p>
+                <p class="text-xl font-bold text-gray-800">{competition.rank}/{competition.totalParticipants}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Weight Lost</p>
+                <p class="text-xl font-bold text-gray-800">{competition.weightLost.toFixed(1)} lbs</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Percentage</p>
+                <p class="text-xl font-bold text-gray-800">{competition.percentageLost.toFixed(1)}%</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-gray-50 px-6 py-3 border-t border-gray-100">
+            <a 
+              href={`/competition/${competition.id}`} 
+              class="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
+            >
+              View Details →
+            </a>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <section class="mt-12">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">Recent Activity</h2>
+    
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <CompetitionDashboard client:load userId={user.id} />
+    </div>
+  </section>
+</Layout>

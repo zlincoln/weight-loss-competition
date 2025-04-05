@@ -1,0 +1,74 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getCurrentUser } from '../lib/cloudflareAccess';
+import { getUserWeightEntries } from '../lib/db';
+
+// Get current user
+const user = await getCurrentUser(Astro.request);
+if (!user) {
+  return Astro.redirect('/.cloudflare/access/login');
+}
+
+// This is a simple profile page since most user management is handled by Cloudflare Access
+---
+
+<Layout title="Your Profile">
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Your Profile</h1>
+    
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+      <div class="flex items-center mb-6">
+        <div class="bg-emerald-100 text-emerald-800 rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold">
+          {user.name.charAt(0).toUpperCase()}
+        </div>
+        <div class="ml-4">
+          <h2 class="text-xl font-semibold">{user.name}</h2>
+          <p class="text-gray-600">{user.email}</p>
+        </div>
+      </div>
+      
+      <div class="border-t border-gray-200 pt-4">
+        <h3 class="text-lg font-medium mb-3">Account Information</h3>
+        <p class="text-gray-600 mb-2">
+          Your account is managed through Cloudflare Access. If you need to update your information, please contact your organization administrator.
+        </p>
+      </div>
+    </div>
+    
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+      <h2 class="text-xl font-semibold mb-4">Privacy Information</h2>
+      <div class="text-gray-600 space-y-3">
+        <p>
+          Your privacy is our top priority. Here's how we protect your data:
+        </p>
+        <ul class="list-disc list-inside space-y-2 ml-4">
+          <li>
+            <span class="font-medium text-gray-700">Private Weight Data:</span> 
+            Your actual weight is never shared with other participants.
+          </li>
+          <li>
+            <span class="font-medium text-gray-700">Percentage-Based Competition:</span>
+            Only your percentage of weight lost is visible to others, not your actual weight.
+          </li>
+          <li>
+            <span class="font-medium text-gray-700">Secure Storage:</span>
+            All data is encrypted and stored securely.
+          </li>
+          <li>
+            <span class="font-medium text-gray-700">Limited Access:</span>
+            Only you can see your complete weight history.
+          </li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="text-center">
+      <a 
+        href="/.cloudflare/access/logout" 
+        class="inline-block bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+      >
+        Sign Out
+      </a>
+    </div>
+  </div>
+</Layout>

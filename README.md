@@ -1,54 +1,133 @@
-# Starlight Starter Kit: Basics
+# Weight Loss Competition App
 
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+A private, secure weight tracking application for group weight loss competitions where participants' progress is measured by percentage of weight lost relative to their starting weight.
+
+## Features
+
+- **Private Weight Tracking**: Users can privately enter their starting weight and daily check-ins without revealing their actual weight to other participants.
+- **Competition Management**: Admins can create competitions and invite users to participate.
+- **Progress & Results**: Users can see competition overviews, rankings, and their personal progress.
+- **Privacy-First Design**: Only weight loss percentages are shared, not actual weights.
+- **Cloudflare Integration**: Utilizes Cloudflare Access for authentication and Cloudflare D1 for database storage.
+
+## Tech Stack
+
+- **Framework**: [Astro](https://astro.build/) with React components
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Authentication**: [Cloudflare Access](https://www.cloudflare.com/products/zero-trust/access/)
+- **Database**: [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite on the edge)
+- **Deployment**: Cloudflare Pages & Workers
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18 or higher
+- Cloudflare account with Access enabled
+- Cloudflare D1 database created
+
+### Environment Setup
+
+1. Clone the repository
+   ```
+   git clone https://github.com/yourusername/weight-loss-competition-app.git
+   cd weight-loss-competition-app
+   ```
+
+2. Install dependencies
+   ```
+   npm install
+   ```
+
+3. Create `.env` file with the following variables:
+   ```
+   CLOUDFLARE_TEAM_DOMAIN=your-team-domain.cloudflareaccess.com
+   CLOUDFLARE_AUD=your-aud-tag-from-cloudflare
+   ```
+
+4. Update the `wrangler.toml` file with your Cloudflare account ID and D1 database ID.
+
+### Local Development
 
 ```
-npm create astro@latest -- --template starlight
+npm run dev
 ```
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/starlight/tree/main/examples/basics)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/starlight/tree/main/examples/basics)
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/withastro/starlight&create_from_path=examples/basics)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fwithastro%2Fstarlight%2Ftree%2Fmain%2Fexamples%2Fbasics&project-name=my-starlight-docs&repository-name=my-starlight-docs)
+### Database Initialization
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+1. Run the database initialization script:
+   ```
+   wrangler d1 execute weight_loss_app_db --local --file=./schema.sql
+   ```
 
-## 🚀 Project Structure
+### Deployment
 
-Inside of your Astro + Starlight project, you'll see the following folders and files:
+1. Set up the following GitHub secrets:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+   - `CLOUDFLARE_TEAM_DOMAIN`
+   - `CLOUDFLARE_AUD`
+
+2. Push to the main branch to trigger a deployment or manually run the GitHub Action workflow.
+
+## Setting up Cloudflare Access
+
+1. In the Cloudflare Zero Trust dashboard, create a new application.
+2. Set up the application with:
+   - Application name: "Weight Loss Competition App"
+   - Session duration: 24 hours (or your preference)
+   - App domain: your-app-domain.pages.dev
+   
+3. Configure access policies to control who can use the application.
+
+4. Note the AUD tag from the application settings page and add it to your environment variables.
+
+## Project Structure
 
 ```
-.
-├── public/
+weight-loss-competition-app/
 ├── src/
-│   ├── assets/
-│   ├── content/
-│   │   ├── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
+│   ├── components/      # React components
+│   ├── functions/       # Serverless functions
+│   ├── lib/             # Shared utilities and DB operations
+│   ├── layouts/         # Astro layout components
+│   ├── pages/           # Astro pages & API routes
+│   └── styles/          # Global CSS
+├── public/              # Static assets
+├── astro.config.mjs     # Astro configuration
+├── tailwind.config.js   # Tailwind CSS configuration
+└── wrangler.toml        # Cloudflare Workers configuration
 ```
 
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
+## Database Schema
 
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
+The application uses the following tables:
 
-Static assets, like favicons, can be placed in the `public/` directory.
+1. **users** - Stores user information
+2. **competitions** - Stores competition details
+3. **competition_participants** - Tracks which users are in which competitions
+4. **weight_entries** - Stores user weight entries over time
 
-## 🧞 Commands
+## Privacy Considerations
 
-All commands are run from the root of the project, from a terminal:
+- User weights are stored securely and never displayed to other users
+- Only weight loss percentage and pounds lost are visible in rankings
+- All data is encrypted at rest using Cloudflare's encryption
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+## Future Enhancements
 
-## 👀 Want to learn more?
+- Multiple simultaneous competitions
+- User registration and profile management
+- Competition templates and recurring competitions
+- Social features (comments, encouragement)
+- Achievement badges
 
-Check out [Starlight’s docs](https://starlight.astro.build/), read [the Astro documentation](https://docs.astro.build), or jump into the [Astro Discord server](https://astro.build/chat).
+## License
+
+MIT
+
+## Acknowledgements
+
+- Cloudflare for providing the infrastructure
+- Astro for the excellent web framework
+- Tailwind CSS for styling utilities

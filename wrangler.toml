@@ -1,0 +1,7 @@
+name = "weight-loss-competition-app"
+compatibility_date = "2023-07-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "weight_loss_app_db"
+database_id = "bef121ca-d30c-4571-9eae-18e9eefc8ad6"

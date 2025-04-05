@@ -1,0 +1,161 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PrivateWeightForm from '../../components/PrivateWeightForm';
+import RankingsTable from '../../components/RankingsTable';
+import ProgressChart from '../../components/ProgressChart';
+import { getCurrentUser } from '../../lib/cloudflareAccess';
+import { 
+  getCompetition,
+  getCompetitionParticipants,
+  getCompetitionRankings,
+  getUserWeightEntries,
+  getCollectiveStatistics 
+} from '../../lib/db';
+
+// Get the competition ID from the URL
+const { id } = Astro.params;
+const competitionId = parseInt(id);
+
+// Get current user
+const user = await getCurrentUser(Astro.request);
+if (!user) {
+  return Astro.redirect('/.cloudflare/access/login');
+}
+
+// Get competition details
+const competition = await getCompetition(Astro.locals.runtime.env.DB, competitionId);
+if (!competition) {
+  return Astro.redirect('/dashboard');
+}
+
+// Get participants to check if the user is a participant
+const participants = await getCompetitionParticipants(Astro.locals.runtime.env.DB, competitionId);
+const isParticipant = participants.some(p => p.user_id === user.id);
+
+// If the user is not a participant, redirect to the competitions page
+if (!isParticipant) {
+  return Astro.redirect('/competition');
+}
+
+// Get competition rankings
+const rankings = await getCompetitionRankings(Astro.locals.runtime.env.DB, competitionId);
+
+// Get user's weight entries
+const weightEntries = await getUserWeightEntries(Astro.locals.runtime.env.DB, user.id, competitionId);
+
+// Get collective statistics
+const statistics = await getCollectiveStatistics(Astro.locals.runtime.env.DB, competitionId);
+
+// Format dates
+const startDate = new Date(competition.start_date).toLocaleDateString();
+const endDate = new Date(competition.end_date).toLocaleDateString();
+
+// Check if competition is active
+const isActive = new Date(competition.end_date) >= new Date();
+
+// Get the user's personal statistics
+const userRanking = rankings.find(r => r.user_id === user.id);
+const userRank = rankings.findIndex(r => r.user_id === user.id) + 1;
+---
+
+<Layout title={competition.name}>
+  <div class="mb-6 flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">{competition.name}</h1>
+      <p class="text-gray-600">
+        {startDate} - {endDate}
+        <span class={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>
+          {isActive ? 'Active' : 'Completed'}
+        </span>
+      </p>
+    </div>
+    <a 
+      href="/dashboard" 
+      class="text-emerald-600 hover:text-emerald-800 font-medium"
+    >
+      ← Back to Dashboard
+    </a>
+  </div>
+  
+  {competition.description && (
+    <div class="bg-gray-50 p-4 rounded-lg mb-8">
+      <p class="text-gray-700">{competition.description}</p>
+    </div>
+  )}
+  
+  <div class="grid lg:grid-cols-3 gap-6 mb-8">
+    <div class="lg:col-span-2">
+      <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+        <h2 class="text-xl font-semibold mb-4">Your Progress</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div class="bg-emerald-50 p-4 rounded-lg">
+            <p class="text-sm text-emerald-600 font-medium">Current Rank</p>
+            <p class="text-2xl font-bold">{userRank}/{rankings.length}</p>
+          </div>
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <p class="text-sm text-blue-600 font-medium">Weight Lost</p>
+            <p class="text-2xl font-bold">{userRanking?.weight_lost.toFixed(1) || '0.0'} lbs</p>
+          </div>
+          <div class="bg-indigo-50 p-4 rounded-lg">
+            <p class="text-sm text-indigo-600 font-medium">Percentage Lost</p>
+            <p class="text-2xl font-bold">{userRanking?.percentage_lost.toFixed(1) || '0.0'}%</p>
+          </div>
+          <div class="bg-purple-50 p-4 rounded-lg">
+            <p class="text-sm text-purple-600 font-medium">Days Remaining</p>
+            <p class="text-2xl font-bold">
+              {isActive ? Math.ceil((new Date(competition.end_date) - new Date()) / (1000 * 60 * 60 * 24)) : '0'}
+            </p>
+          </div>
+        </div>
+        
+        <ProgressChart
+          client:load
+          weightEntries={weightEntries}
+          startDate={competition.start_date}
+          endDate={competition.end_date}
+        />
+      </div>
+      
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-xl font-semibold mb-4">Collective Progress</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600 font-medium">Participants</p>
+            <p class="text-2xl font-bold">{statistics.total_participants}</p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600 font-medium">Total Weight Lost</p>
+            <p class="text-2xl font-bold">{statistics.total_weight_lost.toFixed(1)} lbs</p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600 font-medium">Avg Weight Lost</p>
+            <p class="text-2xl font-bold">{(statistics.total_weight_lost / statistics.active_participants).toFixed(1)} lbs</p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600 font-medium">Avg Percentage</p>
+            <p class="text-2xl font-bold">{(statistics.percentage_lost).toFixed(1)}%</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div>
+      {isActive && (
+        <PrivateWeightForm
+          client:load
+          userId={user.id}
+          competitionId={competitionId}
+        />
+      )}
+      
+      <div class="bg-white p-6 rounded-lg shadow-md mt-6">
+        <h2 class="text-xl font-semibold mb-4">Leaderboard</h2>
+        <RankingsTable
+          client:load
+          rankings={rankings}
+          currentUserId={user.id}
+        />
+      </div>
+    </div>
+  </div>
+</Layout>

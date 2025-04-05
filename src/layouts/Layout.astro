@@ -1,0 +1,70 @@
+---
+import { getCurrentUser } from '../lib/cloudflareAccess';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  requireAuth?: boolean;
+}
+
+const { title, requireAuth = true } = Astro.props;
+
+// Get current user if authentication is required
+let user = null;
+if (requireAuth) {
+  user = await getCurrentUser(Astro.request);
+  
+  // Redirect to login if not authenticated
+  if (!user) {
+    return Astro.redirect('/.cloudflare/access/login');
+  }
+}
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title} - Weight Loss Competition</title>
+  </head>
+  <body class="bg-gray-50 min-h-screen flex flex-col">
+    <header class="bg-emerald-600 text-white shadow-md">
+      <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+        <a href="/" class="text-xl font-bold flex items-center gap-2">
+          <img src="/logo.svg" width="32" height="32" alt="Logo" />
+          <span>Weight Loss Challenge</span>
+        </a>
+        
+        <nav>
+          <ul class="flex space-x-4">
+            {user && (
+              <>
+                <li><a href="/dashboard" class="hover:text-emerald-200">Dashboard</a></li>
+                <li><a href="/competition" class="hover:text-emerald-200">Competitions</a></li>
+                <li><a href="/profile" class="hover:text-emerald-200">Profile</a></li>
+                <li><a href="/.cloudflare/access/logout" class="hover:text-emerald-200">Logout</a></li>
+              </>
+            )}
+            {!user && (
+              <li><a href="/.cloudflare/access/login" class="hover:text-emerald-200">Login</a></li>
+            )}
+          </ul>
+        </nav>
+      </div>
+    </header>
+    
+    <main class="container mx-auto px-4 py-6 flex-grow">
+      <slot />
+    </main>
+    
+    <footer class="mt-auto bg-gray-100 border-t border-gray-200 py-4">
+      <div class="container mx-auto px-4 text-center text-gray-600">
+        <p>&copy; {new Date().getFullYear()} Weight Loss Competition. All rights reserved.</p>
+        <p class="text-sm mt-1">Privacy focused weight tracking for friendly competitions.</p>
+      </div>
+    </footer>
+  </body>
+</html>
